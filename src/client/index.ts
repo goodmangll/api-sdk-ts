@@ -3,7 +3,7 @@ import Ctx from "./context"
 /**
  * 客户端
  * 
- * @author logan
+ * @author linden
  */
 export default abstract class Client<T> {
 

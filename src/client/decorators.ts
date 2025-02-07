@@ -1,7 +1,7 @@
 /**
  * 请求装饰器，用于装饰类方法以便在调用时发送 HTTP 请求。
  * 
- * @author logan
+ * @author linden
  */
 
 
@@ -16,19 +16,7 @@ import ApiSdkError from "./apiSdkError";
 /**
  * 参数装饰器，用于在方法参数上定义元数据。
  * 
- * @param name - 参数的名称。
- * 
- * @remarks
- * 此装饰器用于在方法中标记参数，以便在 POST 提交中使用 JSON 格式或在 GET 提交中使用 form data。
- * 
- * @example
- * ```typescript
- * class MyClass {
- *     myMethod(@Param('id') id: string) {
- *         // 方法实现
- *     }
- * }
- * ```
+ * @param name 参数的名称。
  */
 export function Param(name: string) {
     return function (target: any, propertyKey: string, parameterIndex: number) {
@@ -136,11 +124,24 @@ async function doRequest(client: Client<any>, path: string, method: string, cont
     }
 
     if (args?.length === 1 && typeof args[0] === 'object') {
-        // 如果只有一个参数且为对象，则认为是body
+        // 如果只有一个参数且为对象，则认为是 body，直接发送请求
         body = args[0]
+        // 如果没有参数，直接发送请求
+        const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} }
+        return run(client, ctx)
     }
 
-    // 多个参数的情况
+    processArgs(args, target, propertyKey, body, query, pathParams, headers);
+
+    // 替换路径参数
+    for (const key in pathParams) {
+        path = path.replace(`{${key}}`, String(pathParams[key]));
+    }
+    const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} }
+    return run(client, ctx)
+}
+
+function processArgs(args: any[], target: any, propertyKey: string, body: Record<string, unknown>, query: Record<string, unknown>, pathParams: Record<string, unknown>, headers: Record<string, unknown>) {
     for (let i = 0; i < args.length; i++) {
         const item = args[i]
         const type = typeof item
@@ -151,43 +152,47 @@ async function doRequest(client: Client<any>, path: string, method: string, cont
         }
         name = Reflect.getMetadata(`queryName:${i}`, target, propertyKey)
         if (name) {
-            if (name === true) {
-                if (type === 'object') {
-                    query = { ...query, ...item }
-                }
-            } else {
-                query[name] = item
-            }
-
+            processQuery(name, item, type, query)
         }
         name = Reflect.getMetadata(`pathName:${i}`, target, propertyKey)
         if (name) {
-            if (name === true) {
-                if (type === 'object') {
-                    pathParams = { ...query, ...item }
-                }
-            } else {
-                pathParams[name] = item
-            }
+            processPath(name, item, type, pathParams)
         }
-
         name = Reflect.getMetadata(`headerName:${i}`, target, propertyKey)
         if (name) {
-            if (name === true) {
-                if (type === 'object') {
-                    headers = { ...headers, ...item }
-                }
-            } else {
-                headers[name] = item
-            }
+            processHeader(name, item, type, headers)
         }
     }
+}
 
-    for (const key in pathParams) {
-        path = path.replace(`{${key}}`, String(pathParams[key]));
+function processQuery(name: string | true, item: any, type: string, query: Record<string, unknown>) {
+    if (name === true) {
+        if (type === 'object') {
+            Object.assign(query, item)
+        }
+    } else {
+        query[name] = item
     }
-    const ctx: Ctx = { path, method, contentType, headers,  body, query, pathParams, attribute: {} }
-    return run(client, ctx)
+}
+
+function processPath(name: string | true, item: any, type: string, pathParams: Record<string, unknown>) {
+    if (name === true) {
+        if (type === 'object') {
+            Object.assign(pathParams, item)
+        }
+    } else {
+        pathParams[name] = item
+    }
+}
+
+function processHeader(name: string | true, item: any, type: string, headers: Record<string, unknown>) {
+    if (name === true) {
+        if (type === 'object') {
+            Object.assign(headers, item)
+        }
+    } else {
+        headers[name] = item
+    }
 }
 
 

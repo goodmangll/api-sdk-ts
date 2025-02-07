@@ -48,7 +48,7 @@ export default class AxiosClient extends Client<AxiosInstance> {
             url: path,
             params,
             method,
-            data,
+            data: body,
             headers: headers as never
         })
         return res.data

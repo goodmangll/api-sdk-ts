@@ -2,7 +2,7 @@
 /**
  * 客户端类型
  * 
- * @author logan
+ * @author linden
  */
 
 export enum ContentType {

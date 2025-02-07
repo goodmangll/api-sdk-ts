@@ -1,5 +1,10 @@
 import Ctx from "./context"
 
+/**
+ * 请求过程中发生的错误
+ * 
+ * @author linden
+ */
 export default class ApiSdkError extends Error {
     
     /** 原始的错误 */
