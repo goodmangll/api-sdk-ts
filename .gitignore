@@ -1,0 +1,10 @@
+# 依赖目录
+node_modules/
+.pnpm-store/
+
+# 构建输出
+dist/
+build/
+lib/
+
+.npmrc

@@ -1,0 +1,27 @@
+{
+  "name": "api-sdk-ts",
+  "version": "1.0.0",
+  "description": "api SDK 抽象",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "alist",
+    "client"
+  ],
+  "author": "linden",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.3",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
