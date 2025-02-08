@@ -1,17 +1,27 @@
-import Client from "./client";
-import AxiosClient from "./client/axiosClient";
-import { ContentType } from "./client/type";
-import ClientTemplate from "./template";
-import { Param, Get, Post, Query, Header } from "./client/decorators";
-import Ctx from "./client/context";
-import ApiSdkError from "./client/apiSdkError";
+import Client from './client';
+import AxiosClient from './client/axiosClient';
+import { ContentType } from './client/type';
+import ClientTemplate from './template';
+import { Param, Get, Post, Query, Header } from './client/decorators';
+import Ctx from './client/context';
+import ApiSdkError from './client/apiSdkError';
 
 /**
  * 暴露的接口
- * 
+ *
  * @author linden
  */
 
 export {
-    Client, AxiosClient, ContentType, ClientTemplate, Ctx, ApiSdkError, Param, Get, Post, Query,Header
-}
+  Client,
+  AxiosClient,
+  ContentType,
+  ClientTemplate,
+  Ctx,
+  ApiSdkError,
+  Param,
+  Get,
+  Post,
+  Query,
+  Header,
+};

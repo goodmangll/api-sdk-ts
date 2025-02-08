@@ -9,7 +9,8 @@
     "package.json"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "format": "prettier --write ."
   },
   "keywords": [
     "alist",

@@ -1,69 +1,63 @@
 /**
  * 请求装饰器，用于装饰类方法以便在调用时发送 HTTP 请求。
- * 
+ *
  * @author linden
  */
 
-
-import "reflect-metadata"
-import { ContentType } from "./type";
-import Client from ".";
-import Ctx from "./context";
-import ApiSdkError from "./apiSdkError";
-
-
+import 'reflect-metadata';
+import { ContentType } from './type';
+import Client from '.';
+import Ctx from './context';
+import ApiSdkError from './apiSdkError';
 
 /**
  * 参数装饰器，用于在方法参数上定义元数据。
- * 
+ *
  * @param name 参数的名称。
  */
 export function Param(name: string) {
-    return function (target: any, propertyKey: string, parameterIndex: number) {
-        Reflect.defineMetadata(`paramName:${parameterIndex}`, name, target, propertyKey);
-    }
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    Reflect.defineMetadata(`paramName:${parameterIndex}`, name, target, propertyKey);
+  };
 }
-
 
 /**
  * Query 装饰器用于将参数拼接到查询字符串中。
- * 
+ *
  * @param name - 查询参数的名称。如果为 `true`，则使用参数的名称。
  * @returns 一个装饰器函数，用于在目标方法上定义元数据。
  */
 export function Query(name: string | true = true) {
-    return function (target: any, propertyKey: string, parameterIndex: number) {
-        Reflect.defineMetadata(`queryName:${parameterIndex}`, name, target, propertyKey);
-    }
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    Reflect.defineMetadata(`queryName:${parameterIndex}`, name, target, propertyKey);
+  };
 }
 
 /**
  * Header 装饰器用于将参数添加到请求头中。
- * 
+ *
  * @param name - 请求头的名称。
  * @returns 一个装饰器函数，用于在目标方法上定义元数据。
  */
 export function Header(name: string) {
-    return function (target: any, propertyKey: string, parameterIndex: number) {
-        Reflect.defineMetadata(`headerName:${parameterIndex}`, name, target, propertyKey);
-    }
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    Reflect.defineMetadata(`headerName:${parameterIndex}`, name, target, propertyKey);
+  };
 }
-
 
 /**
  * 路径参数装饰器
- * 
+ *
  * 用于标记路径参数
- * 
+ *
  * @param name 参数名称。如果设置为 `true`，则使用参数名称。
  * @returns 一个装饰器函数，用于定义目标方法参数的元数据。
  */
 export function Path(name: string | true = true) {
-    return function (target: any, propertyKey: string, parameterIndex: number) {
-        Reflect.defineMetadata(`pathName:${parameterIndex}`, name, target, propertyKey);
-    }
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    Reflect.defineMetadata(`pathName:${parameterIndex}`, name, target, propertyKey);
+  };
 }
-
 
 /**
  * HTTP POST请求的装饰器函数。
@@ -73,11 +67,10 @@ export function Path(name: string | true = true) {
  * @returns 一个函数，用于修改目标方法以向指定路径发出POST请求。
  */
 export function Post(path: string, contentType: ContentType = ContentType.JSON) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-        return request(path, 'post', target, propertyKey, descriptor, contentType)
-    }
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return request(path, 'post', target, propertyKey, descriptor, contentType);
+  };
 }
-
 
 /**
  * Get 装饰器，用于将方法标记为 HTTP GET 请求。
@@ -87,11 +80,10 @@ export function Post(path: string, contentType: ContentType = ContentType.JSON) 
  * @returns 装饰器函数。
  */
 export function Get(path: string, contentType: ContentType = ContentType.FORM_DATA) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-        return request(path, 'get', target, propertyKey, descriptor, contentType)
-    }
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return request(path, 'get', target, propertyKey, descriptor, contentType);
+  };
 }
-
 
 /**
  * 请求装饰器，用于装饰类方法以便在调用时发送 HTTP 请求。
@@ -104,98 +96,134 @@ export function Get(path: string, contentType: ContentType = ContentType.FORM_DA
  * @param contentType - 请求的内容类型，默认为 ContentType.FORM_DATA。
  * @returns 修改后的属性描述符。
  */
-function request(path: string, method: string, target: any, propertyKey: string, descriptor: PropertyDescriptor, contentType: ContentType = ContentType.FORM_DATA) {
-    descriptor.value = async function (...args: any[]) {
-        return doRequest(this as Client<any>, path, method, contentType, target, propertyKey, args)
-    }
-    return descriptor
+function request(
+  path: string,
+  method: string,
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor,
+  contentType: ContentType = ContentType.FORM_DATA,
+) {
+  descriptor.value = async function (...args: any[]) {
+    return doRequest(this as Client<any>, path, method, contentType, target, propertyKey, args);
+  };
+  return descriptor;
 }
 
-async function doRequest(client: Client<any>, path: string, method: string, contentType: ContentType, target: any, propertyKey: string, args: any[]) {
-    let body: Record<string, unknown> = {}
-    let query: Record<string, unknown> = {}
-    let pathParams: Record<string, unknown> = {}
-    let headers: Record<string, unknown> = {}
+async function doRequest(
+  client: Client<any>,
+  path: string,
+  method: string,
+  contentType: ContentType,
+  target: any,
+  propertyKey: string,
+  args: any[],
+) {
+  let body: Record<string, unknown> = {};
+  let query: Record<string, unknown> = {};
+  let pathParams: Record<string, unknown> = {};
+  let headers: Record<string, unknown> = {};
 
-    if (!(args?.length)) {
-        // 如果没有参数，直接发送请求
-        const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} }
-        return run(client, ctx)
-    }
+  if (!args?.length) {
+    // 如果没有参数，直接发送请求
+    const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} };
+    return run(client, ctx);
+  }
 
-    if (args?.length === 1 && typeof args[0] === 'object') {
-        // 如果只有一个参数且为对象，则认为是 body，直接发送请求
-        body = args[0]
-        // 如果没有参数，直接发送请求
-        const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} }
-        return run(client, ctx)
-    }
+  if (args?.length === 1 && typeof args[0] === 'object') {
+    // 如果只有一个参数且为对象，则认为是 body，直接发送请求
+    body = args[0];
+    // 如果没有参数，直接发送请求
+    const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} };
+    return run(client, ctx);
+  }
 
-    processArgs(args, target, propertyKey, body, query, pathParams, headers);
+  processArgs(args, target, propertyKey, body, query, pathParams, headers);
 
-    // 替换路径参数
-    for (const key in pathParams) {
-        path = path.replace(`{${key}}`, String(pathParams[key]));
-    }
-    const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} }
-    return run(client, ctx)
+  // 替换路径参数
+  for (const key in pathParams) {
+    path = path.replace(`{${key}}`, String(pathParams[key]));
+  }
+  const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} };
+  return run(client, ctx);
 }
 
-function processArgs(args: any[], target: any, propertyKey: string, body: Record<string, unknown>, query: Record<string, unknown>, pathParams: Record<string, unknown>, headers: Record<string, unknown>) {
-    for (let i = 0; i < args.length; i++) {
-        const item = args[i]
-        const type = typeof item
-        let name = Reflect.getMetadata(`paramName:${i}`, target, propertyKey)
-        if (name) {
-            body[name] = item
-            continue
-        }
-        name = Reflect.getMetadata(`queryName:${i}`, target, propertyKey)
-        if (name) {
-            processQuery(name, item, type, query)
-        }
-        name = Reflect.getMetadata(`pathName:${i}`, target, propertyKey)
-        if (name) {
-            processPath(name, item, type, pathParams)
-        }
-        name = Reflect.getMetadata(`headerName:${i}`, target, propertyKey)
-        if (name) {
-            processHeader(name, item, type, headers)
-        }
+function processArgs(
+  args: any[],
+  target: any,
+  propertyKey: string,
+  body: Record<string, unknown>,
+  query: Record<string, unknown>,
+  pathParams: Record<string, unknown>,
+  headers: Record<string, unknown>,
+) {
+  for (let i = 0; i < args.length; i++) {
+    const item = args[i];
+    const type = typeof item;
+    let name = Reflect.getMetadata(`paramName:${i}`, target, propertyKey);
+    if (name) {
+      body[name] = item;
+      continue;
     }
+    name = Reflect.getMetadata(`queryName:${i}`, target, propertyKey);
+    if (name) {
+      processQuery(name, item, type, query);
+    }
+    name = Reflect.getMetadata(`pathName:${i}`, target, propertyKey);
+    if (name) {
+      processPath(name, item, type, pathParams);
+    }
+    name = Reflect.getMetadata(`headerName:${i}`, target, propertyKey);
+    if (name) {
+      processHeader(name, item, type, headers);
+    }
+  }
 }
 
-function processQuery(name: string | true, item: any, type: string, query: Record<string, unknown>) {
-    if (name === true) {
-        if (type === 'object') {
-            Object.assign(query, item)
-        }
-    } else {
-        query[name] = item
+function processQuery(
+  name: string | true,
+  item: any,
+  type: string,
+  query: Record<string, unknown>,
+) {
+  if (name === true) {
+    if (type === 'object') {
+      Object.assign(query, item);
     }
+  } else {
+    query[name] = item;
+  }
 }
 
-function processPath(name: string | true, item: any, type: string, pathParams: Record<string, unknown>) {
-    if (name === true) {
-        if (type === 'object') {
-            Object.assign(pathParams, item)
-        }
-    } else {
-        pathParams[name] = item
+function processPath(
+  name: string | true,
+  item: any,
+  type: string,
+  pathParams: Record<string, unknown>,
+) {
+  if (name === true) {
+    if (type === 'object') {
+      Object.assign(pathParams, item);
     }
+  } else {
+    pathParams[name] = item;
+  }
 }
 
-function processHeader(name: string | true, item: any, type: string, headers: Record<string, unknown>) {
-    if (name === true) {
-        if (type === 'object') {
-            Object.assign(headers, item)
-        }
-    } else {
-        headers[name] = item
+function processHeader(
+  name: string | true,
+  item: any,
+  type: string,
+  headers: Record<string, unknown>,
+) {
+  if (name === true) {
+    if (type === 'object') {
+      Object.assign(headers, item);
     }
+  } else {
+    headers[name] = item;
+  }
 }
-
-
 
 /**
  * 运行客户端请求处理程序并处理请求和响应。
@@ -206,12 +234,12 @@ function processHeader(name: string | true, item: any, type: string, headers: Re
  * @throws ApiSdkError 如果请求过程中发生错误。
  */
 async function run(client: Client<any>, ctx: Ctx) {
-    client.doReqHandler(ctx)
-    try {
-        ctx.res = await client.doRequest(ctx)
-    } catch (error) {
-        ctx.error = new ApiSdkError(ctx, error as Error)
-    }
-    client.doResHandler(ctx)
-    return ctx.res
+  client.doReqHandler(ctx);
+  try {
+    ctx.res = await client.doRequest(ctx);
+  } catch (error) {
+    ctx.error = new ApiSdkError(ctx, error as Error);
+  }
+  client.doResHandler(ctx);
+  return ctx.res;
 }
