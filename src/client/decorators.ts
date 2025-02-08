@@ -22,6 +22,17 @@ export function Param(name: string) {
 }
 
 /**
+ * Body 装饰器用于将参数添加到请求正文中。
+ *
+ * @returns 一个装饰器函数，用于在目标方法上定义元数据。
+ */
+export function Body() {
+  return function (target: any, propertyKey: string, parameterIndex: number) {
+    Reflect.defineMetadata(`bodyName:${parameterIndex}`, true, target, propertyKey);
+  };
+}
+
+/**
  * Query 装饰器用于将参数拼接到查询字符串中。
  *
  * @param name - 查询参数的名称。如果为 `true`，则使用参数的名称。
@@ -124,39 +135,25 @@ async function doRequest(
   let pathParams: Record<string, unknown> = {};
   let headers: Record<string, unknown> = {};
 
+  const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} };
+
   if (!args?.length) {
     // 如果没有参数，直接发送请求
-    const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} };
     return run(client, ctx);
   }
 
-  if (args?.length === 1 && typeof args[0] === 'object') {
-    // 如果只有一个参数且为对象，则认为是 body，直接发送请求
-    body = args[0];
-    // 如果没有参数，直接发送请求
-    const ctx: Ctx = { path, method, contentType, body, query, pathParams, attribute: {} };
-    return run(client, ctx);
-  }
-
-  processArgs(args, target, propertyKey, body, query, pathParams, headers);
+  processArgs(args, target, propertyKey, ctx);
 
   // 替换路径参数
   for (const key in pathParams) {
     path = path.replace(`{${key}}`, String(pathParams[key]));
   }
-  const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} };
+
   return run(client, ctx);
 }
 
-function processArgs(
-  args: any[],
-  target: any,
-  propertyKey: string,
-  body: Record<string, unknown>,
-  query: Record<string, unknown>,
-  pathParams: Record<string, unknown>,
-  headers: Record<string, unknown>,
-) {
+function processArgs(args: any[], target: any, propertyKey: string, ctx: Ctx) {
+  const { body = {}, query = {}, pathParams = {}, headers = {} } = ctx;
   for (let i = 0; i < args.length; i++) {
     const item = args[i];
     const type = typeof item;
@@ -165,63 +162,35 @@ function processArgs(
       body[name] = item;
       continue;
     }
+    name = Reflect.getMetadata(`bodyName:${i}`, target, propertyKey);
+    if (name && type === 'object') {
+      Object.assign(body, item);
+      continue;
+    }
     name = Reflect.getMetadata(`queryName:${i}`, target, propertyKey);
     if (name) {
-      processQuery(name, item, type, query);
+      process(name, item, type, query);
+      continue;
     }
     name = Reflect.getMetadata(`pathName:${i}`, target, propertyKey);
     if (name) {
-      processPath(name, item, type, pathParams);
+      process(name, item, type, pathParams);
+      continue;
     }
     name = Reflect.getMetadata(`headerName:${i}`, target, propertyKey);
     if (name) {
-      processHeader(name, item, type, headers);
+      process(name, item, type, headers);
     }
   }
 }
 
-function processQuery(
-  name: string | true,
-  item: any,
-  type: string,
-  query: Record<string, unknown>,
-) {
+function process(name: string | true, item: any, type: string, query: Record<string, unknown>) {
   if (name === true) {
     if (type === 'object') {
       Object.assign(query, item);
     }
   } else {
     query[name] = item;
-  }
-}
-
-function processPath(
-  name: string | true,
-  item: any,
-  type: string,
-  pathParams: Record<string, unknown>,
-) {
-  if (name === true) {
-    if (type === 'object') {
-      Object.assign(pathParams, item);
-    }
-  } else {
-    pathParams[name] = item;
-  }
-}
-
-function processHeader(
-  name: string | true,
-  item: any,
-  type: string,
-  headers: Record<string, unknown>,
-) {
-  if (name === true) {
-    if (type === 'object') {
-      Object.assign(headers, item);
-    }
-  } else {
-    headers[name] = item;
   }
 }
 
