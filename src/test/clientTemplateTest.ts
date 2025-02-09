@@ -1,5 +1,5 @@
-import BaiduClient from "./baiduClient";
-import BaiduClientTemplate from "./baiduClientTemplate";
+import BaiduClient from './baiduClient';
+import BaiduClientTemplate from './baiduClientTemplate';
 
 async function main() {
   const baiduClient = new BaiduClient();
@@ -8,19 +8,18 @@ async function main() {
 
   setInterval(async () => {
     try {
-      await clientTemplate.client.sugrec('test', 'pc');
+      const a = await clientTemplate.client.sugrec('test', 'pc');
+      console.log(a);
     } catch (error) {
-      console.error(error);
+      console.log(1111);
     }
-  }, 1000);
+  }, 5000);
 
   setInterval(async () => {
     try {
-      console.log(clientTemplate.serverStatus)
-    } catch (error) {
-      console.error(error);
-    }
-  }, 2000);
+      console.log(clientTemplate.serverStatus);
+    } catch (error) {}
+  }, 1000);
 }
 
 main();

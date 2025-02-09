@@ -1,5 +1,4 @@
-import BaiduClient from "./baiduClient";
-
+import BaiduClient from './baiduClient';
 
 async function main() {
   const client = new BaiduClient();

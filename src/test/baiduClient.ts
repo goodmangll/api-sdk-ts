@@ -3,7 +3,6 @@ import AxiosClient from '../client/axiosClient';
 import { Get, Query } from '../client/decorators';
 
 export default class BaiduClient extends AxiosClient {
-  
   constructor() {
     const axios = Axios.create({
       baseURL: 'https://www.baidu.com',
