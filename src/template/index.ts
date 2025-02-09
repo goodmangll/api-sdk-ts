@@ -100,7 +100,7 @@ export default abstract class ClientTemplate<T> {
   }
 
   /**
-   * 检查并获取结果的异步方法。
+   * 检查请状态并，获取结果的异步方法，如果服务端不可用，会自动监听服务端状态并恢复
    *
    * @param checkFun - 一个返回 Promise 的函数，用于执行检查操作。
    * @param listen - 一个布尔值，指示是否在异常情况下监听服务器状态变化，默认为 false。
@@ -152,8 +152,7 @@ export default abstract class ClientTemplate<T> {
       }
     }
 
-    // 出现异常，但是未解析出异常信息，处于模糊状态，不对serverStaus做处理
-
+    // 出现异常，但是未解析出异常信息，处于模糊状态（可能是用户传参有问题），不对serverStaus做处理
     if (throwErr) {
       throw err;
     }
@@ -170,7 +169,7 @@ export default abstract class ClientTemplate<T> {
         try {
           while (true) {
             await sleep(this.remainingCheckIntervalTime());
-            await this.checkAndGet(() => this.test());
+            await this.checkAndGet(() => this.ping());
             if (this.serverStatus.available) {
               resolve();
               return;
@@ -195,7 +194,7 @@ export default abstract class ClientTemplate<T> {
    *
    * @returns 服务端状态
    */
-  public abstract test(): Promise<void>;
+  public abstract ping(): Promise<void>;
 
   /**
    * 服务异常处理，恢复服务
