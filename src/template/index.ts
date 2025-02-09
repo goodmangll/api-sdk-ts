@@ -29,7 +29,7 @@ export default abstract class ClientTemplate<T> {
    * @param client 客户端
    * @param manageServerStatus 是否管理服务端状态（监听状态、自动恢复）
    */
-  public constructor(client: T, manageServerStatus: boolean = false) {
+  constructor(client: T, manageServerStatus: boolean = false) {
     this.client = this.createProxy(client);
     this.serverStatus = {
       available: true,

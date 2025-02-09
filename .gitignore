@@ -9,3 +9,5 @@ lib/
 
 .npmrc
 pnpm-lock.yaml
+
+.vscode/
