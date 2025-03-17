@@ -5,6 +5,7 @@ import ClientTemplate from './template';
 import { Param, Get, Post, Query, Header, Body } from './client/decorators';
 import Ctx from './client/context';
 import ApiSdkError from './client/apiSdkError';
+import ClientConfig from './template/clientConfig';
 
 /**
  * 暴露的接口
@@ -17,6 +18,7 @@ export {
   AxiosClient,
   ContentType,
   ClientTemplate,
+  ClientConfig,
   Ctx,
   ApiSdkError,
   Body,

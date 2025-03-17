@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "ts-node src/test/clientTemplateTest.ts",
     "format": "prettier --write ."
   },
   "keywords": [

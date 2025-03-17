@@ -1,77 +1,124 @@
+import { AxiosError } from 'axios';
 import ApiSdkError from '../client/apiSdkError';
 import Ctx from '../client/context';
-import ServerStatus from './serverStatus';
+import ConnStatus from './connStatus';
+import FailureHandler from './failureHandler';
+import { parseAxiosNetworkError } from '../utils/axiosUtils';
+import ClientConfig from './clientConfig';
+import Client from '../client';
 import { sleep } from '../utils/threadUtil';
 
+type RequiredClientConfig = {
+  [K in keyof ClientConfig]-?: ClientConfig[K];
+};
+
 /**
- * 客户端模板
+ * 客户端模板基类
+ * 提供客户端连接状态管理、错误处理和自动恢复等功能
  *
+ * @template T - 客户端类型参数
  * @author linden
  */
-export default abstract class ClientTemplate<T> {
-  /** 检查间隔时间 （单位：毫秒） */
-  protected checkIntervalTime = 2000;
+export default abstract class ClientTemplate<T> implements FailureHandler {
+  /** 服务端连接状态 */
+  public readonly connStatus: ConnStatus;
 
-  /** 服务端状态 */
-  public readonly serverStatus: ServerStatus;
+  protected readonly clientConfig: RequiredClientConfig;
 
-  /** 是否管理服务端状态 */
-  protected manageServerStatus: boolean;
+  private onConnStatusChange: () => void = () => {};
 
-  /** 客户端 */
-  public client: T;
+  private readonly defaultClientConfig: Readonly<ClientConfig> = Object.freeze({
+    enableMonitor: false,
+    heartbeatInterval: 5000,
+  });
 
-  /** 等待服务端可用的Promise */
-  private awaitAvailablePromise: Promise<void> | undefined;
+  private initialized: boolean = false;
+  private waitPingPromise: Promise<void> | undefined;
 
-  /**
-   *
-   * @param client 客户端
-   * @param manageServerStatus 是否管理服务端状态（监听状态、自动恢复）
-   */
-  constructor(client: T, manageServerStatus: boolean = false) {
-    this.client = this.createProxy(client);
-    this.serverStatus = {
-      available: true,
-      message: 'ok',
+  constructor(clientConfig?: ClientConfig) {
+    this.connStatus = {
+      available: false,
+      message: 'not init',
     };
-    this.manageServerStatus = manageServerStatus;
+    this.clientConfig = {
+      ...this.defaultClientConfig,
+      ...clientConfig,
+    } as RequiredClientConfig;
+  }
+
+  notifyError(error: ApiSdkError | Error): Promise<void> {
+    return Promise.resolve();
+  }
+
+  tryRestore(ctx?: Ctx): Promise<void> {
+    return Promise.resolve();
+  }
+
+  failMsg(error: ApiSdkError | Error): string | void {
+    let axiosError;
+    if (error instanceof AxiosError) {
+      axiosError = error;
+    } else if (error instanceof ApiSdkError) {
+      if (error.error && error.error instanceof AxiosError) {
+        axiosError = error.error;
+      }
+    }
+    if (!axiosError) {
+      return;
+    }
+    return parseAxiosNetworkError(axiosError);
   }
 
   /**
    * 初始化客户端
-   *
-   * @returns 无
    */
-  public async initialize(): Promise<void> {
-    if (this.manageServerStatus) {
-      this.doManageServerStatus();
+  public async init(): Promise<void> {
+    this.initClientProxy();
+    await this.waitForConnectionReady();
+    this.initialized = true;
+  }
+
+  private initClientProxy() {
+    // 遍历当前对象的所有属性
+    for (const key of Object.keys(this)) {
+      const value = (this as any)[key];
+      // 检查属性值是否是 Client 类型的实例
+      if (value instanceof Client) {
+        // 将 Client 类型的属性设置为 null
+        (this as any)[key] = this.createClientProxy(value);
+      }
     }
   }
 
   /**
-   * 创建代理对象，拦截方法调用
-   *
-   * @param target 目标对象
-   * @returns 代理对象
+   * 创建客户端代理对象
+   * @template P - 目标对象类型
+   * @param target - 需要代理的客户端对象
+   * @returns 代理后的客户端对象
    */
-  private createProxy<T>(target: T): T {
-    const that = this;
-    return new Proxy(target as Object, {
-      get(target: any, propKey: string, receiver: any) {
-        if (typeof target[propKey] !== 'function') {
-          // 对于非方法属性，直接返回属性值
-          return Reflect.get(target, propKey, receiver);
+  protected createClientProxy<P extends object>(target: P): Client<P> {
+    return new Proxy(target as unknown as Client<P>, {
+      get: (target: Client<P>, propKey: string | symbol, receiver: any): any => {
+        const originalProp = Reflect.get(target, propKey, receiver);
+
+        // 如果不是函数，直接返回原始值
+        if (typeof originalProp !== 'function') {
+          return originalProp;
         }
-        return function (...args: any[]) {
-          const fun = () => {
-            return target[propKey](...args);
-          };
-          // 在方法调用后检查服务端状态
-          return that.checkAndGet(fun, false, true);
+
+        // 返回代理函数
+        return async (...args: unknown[]): Promise<unknown> => {
+          try {
+            const result = await Reflect.apply(originalProp, target, args);
+            await this.doHandleResp(result);
+            return result;
+          } catch (error) {
+            await this.doHandleError(error instanceof Error ? error : new Error(String(error)));
+            throw error;
+          }
         };
       },
-    }) as T;
+    });
   }
 
   /**
@@ -79,12 +126,15 @@ export default abstract class ClientTemplate<T> {
    *
    * @returns 剩余检查间隔时间（毫秒）
    */
-  private remainingCheckIntervalTime(): number {
-    const lastCheckEndTime = this.serverStatus.lastCheckEndTime;
+  private calculateRemainingCheckInterval(): number {
+    const lastCheckEndTime = this.connStatus.lastCheckEndTime;
     if (!lastCheckEndTime) {
       // 还没检查过
       return 0;
-    } else return this.checkIntervalTime - (Date.now() - lastCheckEndTime.getTime());
+    }
+    return (
+      this.clientConfig.heartbeatInterval - (new Date().getTime() - lastCheckEndTime.getTime())
+    );
   }
 
   /**
@@ -92,124 +142,105 @@ export default abstract class ClientTemplate<T> {
    *
    * @returns 无
    */
-  public async awaitAvailable(): Promise<void> {
-    if (this.serverStatus.available) {
-      return;
-    }
-    await this.awaitAvailablePromise;
+  private async waitForConnectionReady(): Promise<void> {
+
+    this.waitPing().catch(() => {
+      // nothing
+    });
+    await new Promise<void>((resolve) => {
+      this.onConnStatusChange = () => {
+        if (this.connStatus.available) {
+          resolve();
+        }
+      };
+    });
+  }
+
+  private async doHandleResp(resp: unknown) {
+    this.parseConnStatus();
   }
 
   /**
-   * 检查请状态并，获取结果的异步方法，如果服务端不可用，会自动监听服务端状态并恢复
    *
-   * @param checkFun - 一个返回 Promise 的函数，用于执行检查操作。
-   * @param listen - 一个布尔值，指示是否在异常情况下监听服务器状态变化，默认为 false。
-   * @param throwErr - 一个布尔值，指示是否在捕获到异常时抛出异常，默认为 false。
-   * @returns 返回一个 Promise，解析为检查操作的结果。
-   * @throws 如果 throwErr 为 true 且捕获到异常，则抛出该异常。
+   * @param error
    */
-  private async checkAndGet(
-    checkFun: () => Promise<any>,
-    listen = false,
-    throwErr = false,
-  ): Promise<any> {
-    this.serverStatus.lastCheckBeginTime = new Date();
-    let res;
-    let err: Error | undefined = undefined;
+  private async doHandleError(error: Error) {
     try {
-      res = await checkFun();
+      await this.notifyError(error);
+      await this.tryRestore();
     } catch (error) {
-      err = error as Error;
+      // nothing
     }
-    const now = new Date();
-    this.serverStatus.lastCheckEndTime = now;
-
-    if (!err) {
-      this.serverStatus.available = true;
-      this.serverStatus.message = 'ok';
-      return res;
-    }
-
-    const msg = this.hungUpMsg(err);
-    if (msg) {
-      this.serverStatus.available = false;
-      this.serverStatus.message = msg;
-      this.serverStatus.lastExceptionTime = now;
-      this.serverStatus.lastRestoreBeginTime = now;
-      let ctx;
-      if (err instanceof ApiSdkError) {
-        ctx = err.ctx;
-      }
-      try {
-        await this.restore(ctx);
-      } catch {
-        // nothing
-      }
-      this.serverStatus.lastRestoreEndTime = new Date();
-
-      if (listen) {
-        this.doManageServerStatus();
-      }
-    }
-
-    // 出现异常，但是未解析出异常信息，处于模糊状态（可能是用户传参有问题），不对serverStaus做处理
-    if (throwErr) {
-      throw err;
+    this.parseConnStatus(error);
+    const canPing =
+      !this.connStatus.available && (this.clientConfig.enableMonitor || !this.initialized);
+    if (canPing) {
+      this.waitPing();
     }
   }
 
-  private async doManageServerStatus(): Promise<void> {
-    if (this.awaitAvailablePromise) {
-      // 正在监听中，无需再监听
+  /**
+   * 解析连接状态
+   * @param error - 可能的错误对象
+   */
+  private parseConnStatus(error?: Error): void {
+    const now = new Date();
+    this.connStatus.lastCheckEndTime = now;
+
+    if (!error) {
+      this.updateConnStatusSuccess();
       return;
     }
 
-    this.awaitAvailablePromise = new Promise<void>((resolve, reject) => {
-      const check = async () => {
-        try {
-          while (true) {
-            await sleep(this.remainingCheckIntervalTime());
-            await this.checkAndGet(() => this.ping());
-            if (this.serverStatus.available) {
-              resolve();
-              return;
-            }
-          }
-        } catch (error) {
-          // no nothing
-        }
-      };
-      check();
-    }).finally(() => {
-      this.awaitAvailablePromise = undefined;
+    const errorMessage = this.failMsg(error);
+    if (!errorMessage) return;
+
+    this.updateConnStatusFailure(errorMessage, now);
+  }
+
+  private updateConnStatusSuccess(): void {
+    this.connStatus.available = true;
+    this.connStatus.message = 'ok';
+    this.onConnStatusChange();
+  }
+
+  private updateConnStatusFailure(message: string, timestamp: Date): void {
+    this.connStatus.available = false;
+    this.connStatus.message = message;
+    this.connStatus.lastExceptionTime = timestamp;
+
+    this.onConnStatusChange();
+  }
+
+  /**
+   * 执行ping检查
+   * @returns Promise<void>
+   */
+  private async waitPingPromiseFun(): Promise<void> {
+    try {
+      await this.ping();
+    } catch (error) {
+      // 忽略 ping 检查的错误
+    } finally {
+      this.waitPingPromise = undefined;
+    }
+  }
+
+  private async waitPing(): Promise<void> {
+    const interval = this.calculateRemainingCheckInterval();
+    await sleep(interval);
+    if (!this.waitPingPromise) {
+      this.waitPingPromise = this.waitPingPromiseFun();
+    }
+    this.waitPingPromise.then(() => {
+      this.waitPingPromise = undefined;
     });
   }
 
   /**
    * 检查服务端状态
-   *
-   * - 首次创建对象后会持续调用该方法监听服务端状态，直到服务恢复。
-   *
-   * - 当服务端不可用时，会继续持续监听，直到服务恢复
-   *
-   * @returns 服务端状态
    */
-  public abstract ping(): Promise<void>;
-
-  /**
-   * 服务异常处理，恢复服务
-   *
-   * @param ctx 请求上下文
-   */
-  protected abstract restore(ctx?: Ctx): Promise<void>;
-
-  /**
-   * 解析服务端不可用异常信息
-   *
-   *
-   * 服务端未启动或者服务端核心功能不可用视为服务不可用
-   *
-   * @param error 异常信息，如果非服务端不可用，无需返回
-   */
-  protected abstract hungUpMsg(error: ApiSdkError | Error): string | void;
+  public ping(): Promise<void> {
+    return Promise.resolve();
+  }
 }

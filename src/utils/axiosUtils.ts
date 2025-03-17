@@ -6,6 +6,8 @@ const networkErrorMessages: Record<string, string> = {
   ECONNABORTED: '请求被中止',
   ETIMEDOUT: '请求超时',
   EAI_AGAIN: 'DNS查找临时失败',
+  ECONNREFUSED: '连接被拒绝',
+  ECONNRESET: '连接被重置',
 };
 
 export function parseAxiosNetworkError(error: AxiosError): string | void {

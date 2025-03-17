@@ -1,13 +1,11 @@
-import Ctx from '../client/context';
-import AxiosClientTemplate from '../template/AxiosClientTemplate';
+import SingleClietTemplate from '../template/singleClientTemplate';
 import BaiduClient from './baiduClient';
 
-export default class BaiduClientTemplate extends AxiosClientTemplate<BaiduClient> {
+export default class BaiduClientTemplate extends SingleClietTemplate<BaiduClient> {
+
+
   public ping(): Promise<void> {
     return this.client.sugrec('test', 'pc');
   }
 
-  protected restore(ctx?: Ctx): Promise<void> {
-    return Promise.resolve();
-  }
 }
