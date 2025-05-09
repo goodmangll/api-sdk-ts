@@ -1,11 +1,8 @@
-import SingleClietTemplate from '../template/singleClientTemplate';
-import BaiduClient from './baiduClient';
+import type BaiduClient from './baiduClient'
+import SingleClientTemplate from '../template/singleClientTemplate'
 
-export default class BaiduClientTemplate extends SingleClietTemplate<BaiduClient> {
-
-
+export default class BaiduClientTemplate extends SingleClientTemplate<BaiduClient> {
   public ping(): Promise<void> {
-    return this.client.sugrec('test', 'pc');
+    return this.client.sugrec('test', 'pc')
   }
-
 }

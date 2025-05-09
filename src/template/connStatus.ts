@@ -4,19 +4,19 @@
  * @author linden
  */
 export default interface ConnStatus {
-  
+
   /** 是否可用（只要启动了服务端并且核心功能可以用，就算可用） */
-  available: boolean;
+  available: boolean
 
   /** 状态描述 */
-  message: string;
+  message: string
 
   /** 上一次检查服务开始时间 */
-  lastCheckBeginTime?: Date;
+  lastCheckBeginTime?: Date
 
   /** 上一次检查服务结束时间 */
-  lastCheckEndTime?: Date;
+  lastCheckEndTime?: Date
 
   /** 上一次异常时的时间 */
-  lastExceptionTime?: Date;
+  lastExceptionTime?: Date
 }

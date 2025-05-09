@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios'
 
 // 错误代码对应的中文信息
 const networkErrorMessages: Record<string, string> = {
@@ -8,11 +8,11 @@ const networkErrorMessages: Record<string, string> = {
   EAI_AGAIN: 'DNS查找临时失败',
   ECONNREFUSED: '连接被拒绝',
   ECONNRESET: '连接被重置',
-};
+}
 
 export function parseAxiosNetworkError(error: AxiosError): string | void {
   if (!error.code) {
-    return;
+    return
   }
-  return networkErrorMessages[error.code];
+  return networkErrorMessages[error.code]
 }

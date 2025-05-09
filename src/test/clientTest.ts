@@ -1,9 +1,9 @@
-import BaiduClient from './baiduClient';
+import BaiduClient from './baiduClient'
 
 async function main() {
-  const client = new BaiduClient();
-  const resp = await client.sugrec('test', 'pc');
-  console.log(resp);
+  const client = new BaiduClient()
+  const _resp = await client.sugrec('test', 'pc')
+  // console.log(resp)
 }
 
-main();
+main()

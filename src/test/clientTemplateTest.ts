@@ -1,27 +1,31 @@
-import BaiduClient from './baiduClient';
-import BaiduClientTemplate from './baiduClientTemplate';
+import BaiduClient from './baiduClient'
+import BaiduClientTemplate from './baiduClientTemplate'
 
 async function main() {
-  const baiduClient = new BaiduClient();
-  const clientTemplate = new BaiduClientTemplate(baiduClient);
-  await clientTemplate.init();
-  console.log('init')
-  // console.log(clientTemplate.connStatus);
+  const baiduClient = new BaiduClient()
+  const clientTemplate = new BaiduClientTemplate(baiduClient)
+  await clientTemplate.init()
+  console.warn('init')
+  console.warn(clientTemplate.connStatus)
 
-  // setInterval(async () => {
-  //   try {
-  //     const a = await clientTemplate.client.sugrec('test', 'pc');
-  //     console.log(a);
-  //   } catch (error) {
-  //     console.log(1111);
-  //   }
-  // }, 5000);
+  setInterval(async () => {
+    try {
+      const a = await clientTemplate.client.sugrec('test', 'pc')
+      console.warn(a)
+    }
+    catch (error) {
+      console.warn(error)
+    }
+  }, 5000)
 
-  // setInterval(async () => {
-  //   try {
-  //     console.log(clientTemplate.connStatus);
-  //   } catch (error) {}
-  // }, 1000);
+  setInterval(async () => {
+    try {
+      console.warn(clientTemplate.connStatus)
+    }
+    catch (error) {
+      console.warn(error)
+    }
+  }, 1000)
 }
 
-main();
+main()
