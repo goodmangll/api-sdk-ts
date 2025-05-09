@@ -9,7 +9,7 @@
 - 支持 JSON 和 Form-data 格式请求
 - 基于 Axios 的 HTTP 客户端实现
 - 完整的 TypeScript 类型支持
-- 智能错误处理和自动重试机制
+- 智能错误处理机制
 - 灵活的请求参数装饰器
 
 ## 安装
@@ -263,19 +263,6 @@ class MyApiTemplate extends SingleClientTemplate<MyApiClient> {
     // 可以在这里添加自定义恢复逻辑
   }
 }
-```
-
-### 使用重试机制
-
-```typescript
-// 使用内置的重试机制执行操作
-const result = await apiTemplate.retryOperation(
-  async () => {
-    return await someRiskyOperation()
-  },
-  5, // 最大重试 5 次
-  2000 // 初始延迟 2 秒
-)
 ```
 
 ## 开发
