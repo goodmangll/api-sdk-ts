@@ -4,7 +4,7 @@
 
 ## 特性
 
-- 支持 HTTP GET/POST 请求装饰器
+- 支持 HTTP GET/POST/PUT/DELETE/PATCH 请求装饰器
 - 内置服务端状态监控和自动恢复机制
 - 支持 JSON 和 Form-data 格式请求
 - 基于 Axios 的 HTTP 客户端实现
@@ -82,8 +82,6 @@ class MyApiTemplate extends SingleClientTemplate<MyApiClient> {
     super(client, {
       enableMonitor: true,
       heartbeatInterval: 10000,
-      maxRetries: 3,
-      initialRetryDelay: 1000,
       ...config
     })
   }
@@ -163,6 +161,27 @@ main()
 - `path`: 请求路径
 - `contentType`: 内容类型，默认为 `ContentType.JSON`
 
+#### `@Put(path: string, contentType?: ContentType)`
+
+用于 PUT 请求的装饰器。
+
+- `path`: 请求路径
+- `contentType`: 内容类型，默认为 `ContentType.JSON`
+
+#### `@Delete(path: string, contentType?: ContentType)`
+
+用于 DELETE 请求的装饰器。
+
+- `path`: 请求路径
+- `contentType`: 内容类型，默认为 `ContentType.FORM_DATA`
+
+#### `@Patch(path: string, contentType?: ContentType)`
+
+用于 PATCH 请求的装饰器。
+
+- `path`: 请求路径
+- `contentType`: 内容类型，默认为 `ContentType.JSON`
+
 #### `@Query(name?: string | true)`
 
 查询参数装饰器，用于添加 URL 查询参数。
@@ -225,8 +244,6 @@ API SDK 错误类，封装了请求过程中的错误信息。
 
 - `enableMonitor`: 是否启用监控
 - `heartbeatInterval`: 心跳检测间隔（毫秒）
-- `maxRetries`: 最大重试次数
-- `initialRetryDelay`: 初始重试延迟（毫秒）
 
 ## 高级用法
 
