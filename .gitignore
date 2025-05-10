@@ -11,3 +11,6 @@ lib/
 pnpm-lock.yaml
 
 .vscode/
+
+
+.cursor

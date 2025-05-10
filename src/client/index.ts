@@ -46,7 +46,6 @@ export default abstract class Client<T, R = unknown> {
   /**
    * 工具方法，返回空值
    * @returns 空值
-   * @deprecated 应该使用具体的返回类型，而不是 any
    */
   protected any(): unknown {
     return null
