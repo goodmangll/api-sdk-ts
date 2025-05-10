@@ -1,19 +1,25 @@
 {
   "compilerOptions": {
+    // 目标 JavaScript 版本
     "target": "ES2024",
     "lib": ["ES2024", "DOM"],
+    // 生成装饰器的元数据，配合 reflect-metadata 使用
     "emitDecoratorMetadata": true,
+    // 启用实验性的装饰器语法
     "experimentalDecorators": true,
-    "rootDir": "./src",
+    // 生成的模块规范
     "module": "ESNext",
+    // 模块解析方式，适配现代打包工具
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
+    // 开启所有严格类型检查
     "strict": true,
-    "declaration": true,
-    "outDir": "./dist",
+    // 允许从没有默认导出的模块默认导入
     "allowSyntheticDefaultImports": true,
+    // 允许默认导入非 esModule 的模块
     "esModuleInterop": true,
+    // 强制文件名大小写一致
     "forceConsistentCasingInFileNames": true,
+    // 跳过库文件的类型检查，加快编译速度
     "skipLibCheck": true
   }
 }

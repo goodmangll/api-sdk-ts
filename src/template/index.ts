@@ -206,8 +206,9 @@ export default abstract class ClientTemplate<_T> implements FailureHandler {
     }
 
     const errorMessage = this.failMsg(error)
-    if (!errorMessage)
+    if (!errorMessage) {
       return
+    }
 
     this.updateConnStatusFailure(errorMessage, now)
   }
