@@ -187,6 +187,7 @@ async function doRequest(
   for (const key in pathParams) {
     path = path.replace(`{${key}}`, String(pathParams[key]))
   }
+  ctx.path = path  // 更新ctx.path为替换后的路径
 
   return run(client, ctx)
 }
@@ -223,14 +224,14 @@ function processArgs(args: any[], target: any, propertyKey: string, ctx: Ctx) {
   }
 }
 
-function process(name: string | true, item: any, type: string, query: Record<string, unknown>) {
+function process(name: string | true, item: any, type: string, target: Record<string, unknown>) {
   if (name === true) {
     if (type === 'object') {
-      Object.assign(query, item)
+      Object.assign(target, item)
     }
   }
   else {
-    query[name] = item
+    target[name] = item
   }
 }
 
