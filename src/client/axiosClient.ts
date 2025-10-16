@@ -19,19 +19,19 @@ export default class AxiosClient<R = unknown> extends Client<AxiosInstance, R> {
    */
   private toFormData(data: Record<string, unknown>): FormData {
     const formData = new FormData()
-    Object.entries(data).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(data)) {
       if (value instanceof Blob || value instanceof File) {
         formData.append(key, value)
       }
       else if (Array.isArray(value)) {
-        value.forEach((item, index) => {
+        for (const [index, item] of value.entries()) {
           formData.append(`${key}[${index}]`, String(item))
-        })
+        }
       }
       else {
         formData.append(key, String(value))
       }
-    })
+    }
     return formData
   }
 

@@ -35,8 +35,15 @@ export default abstract class ClientTemplate<_T> implements FailureHandler {
     heartbeatInterval: 5000,
   })
 
+  /** 是否初始化 */
   private initialized: boolean = false
+  /** 等待ping的Promise */
   private waitPingPromise: Promise<void> | undefined
+  /**
+   * 构造函数
+   *
+   * @param clientConfig 客户端配置
+   */
 
   constructor(clientConfig?: ClientConfig) {
     this.connStatus = {
