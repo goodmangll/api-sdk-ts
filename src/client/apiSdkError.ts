@@ -13,6 +13,8 @@ export enum ApiErrorType {
   SERVER = 'SERVER',
   /** 客户端错误 */
   CLIENT = 'CLIENT',
+  /** 请求被取消 */
+  CANCELED = 'CANCELED',
   /** 未知错误 */
   UNKNOWN = 'UNKNOWN',
 }
@@ -60,7 +62,11 @@ export default class ApiSdkError extends Error {
     let statusCode: number | undefined
 
     if (error instanceof AxiosError) {
-      if (error.code === 'ECONNABORTED') {
+      // 处理取消请求
+      if (error.code === 'ERR_CANCELED') {
+        errorType = ApiErrorType.CANCELED
+      }
+      else if (error.code === 'ECONNABORTED') {
         errorType = ApiErrorType.TIMEOUT
       }
       else if (error.code === 'ERR_NETWORK') {
@@ -87,6 +93,11 @@ export default class ApiSdkError extends Error {
    * @returns 格式化的错误信息
    */
   public getFormattedMessage(): string {
+    // 取消请求的特殊处理
+    if (this.errorType === ApiErrorType.CANCELED) {
+      return `[CANCELED] Request was canceled - Path: ${this.ctx.path}`
+    }
+
     const parts = [
       `[${this.errorType}]`,
       this.message,
