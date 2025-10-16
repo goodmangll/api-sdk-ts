@@ -13,6 +13,8 @@ export enum ApiErrorType {
   SERVER = 'SERVER',
   /** 客户端错误 */
   CLIENT = 'CLIENT',
+  /** 请求被取消 */
+  CANCELED = 'CANCELED',
   /** 未知错误 */
   UNKNOWN = 'UNKNOWN',
 }
@@ -30,10 +32,6 @@ export default class ApiSdkError extends Error {
   public readonly ctx: Ctx
   /** 错误类型 */
   public readonly errorType: ApiErrorType
-  /** 是否可重试 */
-  public readonly retryable: boolean
-  /** 建议的重试延迟（毫秒） */
-  public readonly retryDelay: number
   /** HTTP 状态码 */
   public readonly statusCode?: number
 
@@ -44,15 +42,13 @@ export default class ApiSdkError extends Error {
     this.name = 'ApiSdkError'
 
     // 分析错误类型
-    const { errorType, statusCode, retryable, retryDelay } = this.analyzeError(error)
+    const { errorType, statusCode } = this.analyzeError(error)
     this.errorType = errorType
     this.statusCode = statusCode
-    this.retryable = retryable
-    this.retryDelay = retryDelay
   }
 
   /**
-   * 分析错误类型并确定重试策略
+   * 分析错误类型
    *
    * @param error 原始错误
    * @returns 错误分析结果
@@ -60,44 +56,35 @@ export default class ApiSdkError extends Error {
   private analyzeError(error?: Error): {
     errorType: ApiErrorType
     statusCode?: number
-    retryable: boolean
-    retryDelay: number
   } {
     // 默认值
     let errorType = ApiErrorType.UNKNOWN
     let statusCode: number | undefined
-    let retryable = false
-    let retryDelay = 1000 // 默认重试延迟 1 秒
 
     if (error instanceof AxiosError) {
-      if (error.code === 'ECONNABORTED') {
+      // 处理取消请求
+      if (error.code === 'ERR_CANCELED') {
+        errorType = ApiErrorType.CANCELED
+      }
+      else if (error.code === 'ECONNABORTED') {
         errorType = ApiErrorType.TIMEOUT
-        retryable = true
-        retryDelay = 2000 // 超时错误重试延迟 2 秒
       }
       else if (error.code === 'ERR_NETWORK') {
         errorType = ApiErrorType.NETWORK
-        retryable = true
-        retryDelay = 3000 // 网络错误重试延迟 3 秒
       }
       else if (error.response) {
         statusCode = error.response.status
 
         if (statusCode >= 500) {
           errorType = ApiErrorType.SERVER
-          retryable = true
-          retryDelay = 5000 // 服务端错误重试延迟 5 秒
         }
         else if (statusCode >= 400) {
           errorType = ApiErrorType.CLIENT
-          // 客户端错误通常不需要重试，除了 429 (Too Many Requests)
-          retryable = statusCode === 429
-          retryDelay = statusCode === 429 ? 10000 : 0 // 限流错误重试延迟 10 秒
         }
       }
     }
 
-    return { errorType, statusCode, retryable, retryDelay }
+    return { errorType, statusCode }
   }
 
   /**
@@ -106,6 +93,11 @@ export default class ApiSdkError extends Error {
    * @returns 格式化的错误信息
    */
   public getFormattedMessage(): string {
+    // 取消请求的特殊处理
+    if (this.errorType === ApiErrorType.CANCELED) {
+      return `[CANCELED] Request was canceled - Path: ${this.ctx.path}`
+    }
+
     const parts = [
       `[${this.errorType}]`,
       this.message,

@@ -24,11 +24,4 @@ export default interface Ctx {
   res?: unknown
   /** 错误 */
   error?: Error
-  /** 请求取消控制器 */
-  abortController?: AbortController
-  /**
-   * 取消请求
-   * @param reason 取消原因
-   */
-  cancel?: (reason?: string) => void
 }

@@ -1,7 +1,26 @@
 import type { AxiosInstance, AxiosResponse } from 'axios'
 import type Ctx from './context'
+import type { FormDataOptions, UrlEncodedOptions } from './serializers'
 import Client from '.'
-import { ContentType } from './types'
+import {
+  CustomSerializer,
+  FormDataSerializer,
+  JsonSerializer,
+  SerializerFactory,
+  TextSerializer,
+  UrlEncodedSerializer,
+} from './serializers'
+import { BodyType } from './types'
+
+/**
+ * 序列化器配置选项
+ */
+export interface SerializerOptions {
+  /** FormData 序列化配置 */
+  formData?: FormDataOptions
+  /** URL 编码序列化配置 */
+  urlEncoded?: UrlEncodedOptions
+}
 
 /**
  * Axios 客户端实现
@@ -11,28 +30,37 @@ import { ContentType } from './types'
  * @author linden
  */
 export default class AxiosClient<R = unknown> extends Client<AxiosInstance, R> {
+  constructor(connector: AxiosInstance, options?: SerializerOptions) {
+    super(connector)
+    this.initializeSerializers(options)
+  }
+
   /**
-   * 将对象转换为 FormData
+   * 初始化序列化器
    *
-   * @param data 需要转换的对象
-   * @returns 转换后的 FormData 对象
+   * @param options 序列化器配置选项
    */
-  private toFormData(data: Record<string, unknown>): FormData {
-    const formData = new FormData()
-    for (const [key, value] of Object.entries(data)) {
-      if (value instanceof Blob || value instanceof File) {
-        formData.append(key, value)
-      }
-      else if (Array.isArray(value)) {
-        for (const [index, item] of value.entries()) {
-          formData.append(`${key}[${index}]`, String(item))
-        }
-      }
-      else {
-        formData.append(key, String(value))
-      }
-    }
-    return formData
+  private initializeSerializers(options?: SerializerOptions): void {
+    // 注册 JSON 序列化器
+    SerializerFactory.register(BodyType.JSON, new JsonSerializer())
+
+    // 注册 FormData 序列化器
+    SerializerFactory.register(
+      BodyType.FORM_DATA,
+      new FormDataSerializer(options?.formData),
+    )
+
+    // 注册 URL 编码序列化器
+    SerializerFactory.register(
+      BodyType.FORM_URLENCODED,
+      new UrlEncodedSerializer(options?.urlEncoded),
+    )
+
+    // 注册文本序列化器
+    SerializerFactory.register(BodyType.TEXT, new TextSerializer())
+
+    // 注册自定义序列化器
+    SerializerFactory.register(BodyType.CUSTOM, new CustomSerializer())
   }
 
   /**
@@ -44,33 +72,39 @@ export default class AxiosClient<R = unknown> extends Client<AxiosInstance, R> {
    */
   public async doRequest(ctx: Ctx): Promise<R> {
     const { path, method, contentType, body: data, query: params, headers } = ctx
-    if (method === 'get' && contentType === ContentType.JSON) {
-      throw new Error('GET 请求不能使用 JSON 格式')
+
+    // 警告：GET 请求携带 JSON body 不符合常规用法
+    if (method === 'get' && contentType === BodyType.JSON && data && Object.keys(data).length > 0) {
+      console.warn(
+        `[ApiSdk Warning] GET 请求携带 JSON body 不符合常规用法，某些代理或服务器可能不支持。建议使用 POST 或将参数放入 query。Path: ${path}`,
+      )
     }
 
-    let body: Record<string, unknown> | FormData = data ?? {}
+    // 1. 获取序列化器并处理数据
+    const serializer = SerializerFactory.get(contentType)
+    const body = serializer.serialize(data ?? {})
 
-    if (contentType === ContentType.FORM_DATA) {
-      body = this.toFormData(body)
+    // 2. 检查是否已设置 Content-Type（装饰器或参数级别）
+    // 注意：decorators 中已经规范化为 'Content-Type'，无需检查多个大小写
+    const hasCustomContentType = headers['Content-Type'] !== undefined
+
+    // 3. 如果未设置，使用序列化器的默认值
+    if (!hasCustomContentType) {
+      const defaultContentType = serializer.getDefaultContentType()
+      if (defaultContentType) {
+        headers['Content-Type'] = defaultContentType
+      }
     }
 
-    // 创建取消控制器
-    const abortController = new AbortController()
-    ctx.abortController = abortController
-
-    // 添加取消方法
-    ctx.cancel = (reason?: string) => {
-      abortController.abort(reason ?? '请求被取消')
-    }
-
+    // 4. 发送请求
     const res: AxiosResponse<R> = await this.connector.request({
       url: path,
       params,
       method,
       data: body,
       headers: headers as Record<string, string>,
-      signal: abortController.signal,
     })
+
     return res.data
   }
 }
