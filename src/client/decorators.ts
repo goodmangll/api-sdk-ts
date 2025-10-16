@@ -11,13 +11,18 @@ import { ContentType } from './types'
 import 'reflect-metadata'
 
 /**
+ * 装饰器属性键类型
+ */
+type DecoratorPropertyKey = string | symbol | undefined
+
+/**
  * 参数装饰器，用于在方法参数上定义元数据。
  *
  * @param name 参数的名称。
  */
-export function Param(name: string) {
-  return function (target: any, propertyKey: string, parameterIndex: number) {
-    Reflect.defineMetadata(`paramName:${parameterIndex}`, name, target, propertyKey)
+export function Param(name: string): ParameterDecorator {
+  return function (target: object, propertyKey: DecoratorPropertyKey, parameterIndex: number) {
+    Reflect.defineMetadata(`paramName:${parameterIndex}`, name, target, propertyKey as string | symbol)
   }
 }
 
@@ -26,9 +31,9 @@ export function Param(name: string) {
  *
  * @returns 一个装饰器函数，用于在目标方法上定义元数据。
  */
-export function Body() {
-  return function (target: any, propertyKey: string, parameterIndex: number) {
-    Reflect.defineMetadata(`bodyName:${parameterIndex}`, true, target, propertyKey)
+export function Body(): ParameterDecorator {
+  return function (target: object, propertyKey: DecoratorPropertyKey, parameterIndex: number) {
+    Reflect.defineMetadata(`bodyName:${parameterIndex}`, true, target, propertyKey as string | symbol)
   }
 }
 
@@ -38,9 +43,9 @@ export function Body() {
  * @param name - 查询参数的名称。如果为 `true`，则使用参数的名称。
  * @returns 一个装饰器函数，用于在目标方法上定义元数据。
  */
-export function Query(name: string | true = true) {
-  return function (target: any, propertyKey: string, parameterIndex: number) {
-    Reflect.defineMetadata(`queryName:${parameterIndex}`, name, target, propertyKey)
+export function Query(name: string | true = true): ParameterDecorator {
+  return function (target: object, propertyKey: DecoratorPropertyKey, parameterIndex: number) {
+    Reflect.defineMetadata(`queryName:${parameterIndex}`, name, target, propertyKey as string | symbol)
   }
 }
 
@@ -50,9 +55,9 @@ export function Query(name: string | true = true) {
  * @param name - 请求头的名称。
  * @returns 一个装饰器函数，用于在目标方法上定义元数据。
  */
-export function Header(name: string) {
-  return function (target: any, propertyKey: string, parameterIndex: number) {
-    Reflect.defineMetadata(`headerName:${parameterIndex}`, name, target, propertyKey)
+export function Header(name: string): ParameterDecorator {
+  return function (target: object, propertyKey: DecoratorPropertyKey, parameterIndex: number) {
+    Reflect.defineMetadata(`headerName:${parameterIndex}`, name, target, propertyKey as string | symbol)
   }
 }
 
@@ -64,9 +69,9 @@ export function Header(name: string) {
  * @param name 参数名称。如果设置为 `true`，则使用参数名称。
  * @returns 一个装饰器函数，用于定义目标方法参数的元数据。
  */
-export function Path(name: string | true = true) {
-  return function (target: any, propertyKey: string, parameterIndex: number) {
-    Reflect.defineMetadata(`pathName:${parameterIndex}`, name, target, propertyKey)
+export function Path(name: string | true = true): ParameterDecorator {
+  return function (target: object, propertyKey: DecoratorPropertyKey, parameterIndex: number) {
+    Reflect.defineMetadata(`pathName:${parameterIndex}`, name, target, propertyKey as string | symbol)
   }
 }
 
@@ -77,8 +82,8 @@ export function Path(name: string | true = true) {
  * @param contentType - 请求的内容类型。默认为 `ContentType.JSON`。
  * @returns 一个函数，用于修改目标方法以向指定路径发出POST请求。
  */
-export function Post(path: string, contentType: ContentType = ContentType.JSON) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function Post(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+  return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     return request(path, 'post', target, propertyKey, descriptor, contentType)
   }
 }
@@ -90,8 +95,8 @@ export function Post(path: string, contentType: ContentType = ContentType.JSON) 
  * @param contentType - 请求的内容类型，默认为 FORM_DATA。
  * @returns 装饰器函数。
  */
-export function Get(path: string, contentType: ContentType = ContentType.FORM_DATA) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function Get(path: string, contentType: ContentType = ContentType.FORM_DATA): MethodDecorator {
+  return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     return request(path, 'get', target, propertyKey, descriptor, contentType)
   }
 }
@@ -103,8 +108,8 @@ export function Get(path: string, contentType: ContentType = ContentType.FORM_DA
  * @param contentType - 请求的内容类型，默认为 JSON。
  * @returns 装饰器函数。
  */
-export function Put(path: string, contentType: ContentType = ContentType.JSON) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function Put(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+  return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     return request(path, 'put', target, propertyKey, descriptor, contentType)
   }
 }
@@ -116,8 +121,8 @@ export function Put(path: string, contentType: ContentType = ContentType.JSON) {
  * @param contentType - 请求的内容类型，默认为 FORM_DATA。
  * @returns 装饰器函数。
  */
-export function Delete(path: string, contentType: ContentType = ContentType.FORM_DATA) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function Delete(path: string, contentType: ContentType = ContentType.FORM_DATA): MethodDecorator {
+  return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     return request(path, 'delete', target, propertyKey, descriptor, contentType)
   }
 }
@@ -129,8 +134,8 @@ export function Delete(path: string, contentType: ContentType = ContentType.FORM
  * @param contentType - 请求的内容类型，默认为 JSON。
  * @returns 装饰器函数。
  */
-export function Patch(path: string, contentType: ContentType = ContentType.JSON) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function Patch(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+  return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     return request(path, 'patch', target, propertyKey, descriptor, contentType)
   }
 }
@@ -149,26 +154,26 @@ export function Patch(path: string, contentType: ContentType = ContentType.JSON)
 function request(
   path: string,
   method: string,
-  target: any,
-  propertyKey: string,
+  target: object,
+  propertyKey: string | symbol,
   descriptor: PropertyDescriptor,
   contentType: ContentType = ContentType.FORM_DATA,
-) {
-  descriptor.value = async function (...args: any[]) {
-    return doRequest(this as Client<any>, path, method, contentType, target, propertyKey, args)
+): PropertyDescriptor {
+  descriptor.value = async function (...args: unknown[]) {
+    return doRequest(this as Client<unknown>, path, method, contentType, target, propertyKey, args)
   }
   return descriptor
 }
 
 async function doRequest(
-  client: Client<any>,
+  client: Client<unknown>,
   path: string,
   method: string,
   contentType: ContentType,
-  target: any,
-  propertyKey: string,
-  args: any[],
-) {
+  target: object,
+  propertyKey: string | symbol,
+  args: unknown[],
+): Promise<unknown> {
   const body: Record<string, unknown> = {}
   const query: Record<string, unknown> = {}
   const pathParams: Record<string, unknown> = {}
@@ -187,12 +192,12 @@ async function doRequest(
   for (const key in pathParams) {
     path = path.replace(`{${key}}`, String(pathParams[key]))
   }
-  ctx.path = path  // 更新ctx.path为替换后的路径
+  ctx.path = path // 更新ctx.path为替换后的路径
 
   return run(client, ctx)
 }
 
-function processArgs(args: any[], target: any, propertyKey: string, ctx: Ctx) {
+function processArgs(args: unknown[], target: object, propertyKey: string | symbol, ctx: Ctx): void {
   const { body = {}, query = {}, pathParams = {}, headers = {} } = ctx
   for (let i = 0; i < args.length; i++) {
     const item = args[i]
@@ -224,7 +229,7 @@ function processArgs(args: any[], target: any, propertyKey: string, ctx: Ctx) {
   }
 }
 
-function process(name: string | true, item: any, type: string, target: Record<string, unknown>) {
+function process(name: string | true, item: unknown, type: string, target: Record<string, unknown>): void {
   if (name === true) {
     if (type === 'object') {
       Object.assign(target, item)
@@ -243,7 +248,7 @@ function process(name: string | true, item: any, type: string, target: Record<st
  * @returns 请求的响应。
  * @throws ApiSdkError 如果请求过程中发生错误。
  */
-async function run(client: Client<any>, ctx: Ctx) {
+async function run(client: Client<unknown>, ctx: Ctx): Promise<unknown> {
   client.doReqHandler(ctx)
   try {
     ctx.res = await client.doRequest(ctx)
