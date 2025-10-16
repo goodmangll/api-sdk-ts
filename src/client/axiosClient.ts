@@ -130,22 +130,12 @@ export default class AxiosClient<R = unknown> extends Client<AxiosInstance, R> {
       body = this.toFormData(body)
     }
 
-    // 创建取消控制器
-    const abortController = new AbortController()
-    ctx.abortController = abortController
-
-    // 添加取消方法
-    ctx.cancel = (reason?: string) => {
-      abortController.abort(reason ?? '请求被取消')
-    }
-
     const res: AxiosResponse<R> = await this.connector.request({
       url: path,
       params,
       method,
       data: body,
       headers: headers as Record<string, string>,
-      signal: abortController.signal,
     })
     return res.data
   }
