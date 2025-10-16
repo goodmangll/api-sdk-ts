@@ -7,7 +7,7 @@
 import type Client from '.'
 import type Ctx from './context'
 import ApiSdkError from './apiSdkError'
-import { ContentType } from './type'
+import { ContentType } from './types'
 import 'reflect-metadata'
 
 /**

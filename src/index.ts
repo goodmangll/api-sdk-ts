@@ -1,26 +1,14 @@
-import type Ctx from './client/context'
-import type ClientConfig from './template/clientConfig'
-import Client from './client'
-import ApiSdkError, { ApiErrorType } from './client/apiSdkError'
-import AxiosClient from './client/axiosClient'
-import { ContentType } from './client/type'
-import ClientTemplate from './template'
-import SingleClientTemplate from './template/singleClientTemplate'
-
 /**
  * 暴露的接口
  *
  * @author linden
  */
 
-export {
-  ApiErrorType,
-  ApiSdkError,
-  AxiosClient,
-  Client,
-  ClientConfig,
-  ClientTemplate,
-  ContentType,
-  Ctx,
-  SingleClientTemplate,
-}
+export { default as Client } from './client'
+export { ApiErrorType, default as ApiSdkError } from './client/apiSdkError'
+export { default as AxiosClient } from './client/axiosClient'
+export type { default as Ctx } from './client/context'
+export { ContentType } from './client/types'
+export { default as ClientTemplate } from './template'
+export type { default as ClientConfig } from './template/clientConfig'
+export { default as SingleClientTemplate } from './template/singleClientTemplate'
