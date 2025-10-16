@@ -152,7 +152,7 @@ export default abstract class ClientTemplate<_T> implements FailureHandler {
       return 0
     }
     return (
-      this.clientConfig.heartbeatInterval - (new Date().getTime() - lastCheckEndTime.getTime())
+      this.clientConfig.heartbeatInterval - (Date.now() - lastCheckEndTime.getTime())
     )
   }
 

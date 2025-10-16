@@ -1,7 +1,7 @@
 import type { AxiosInstance, AxiosResponse } from 'axios'
 import type Ctx from './context'
 import Client from '.'
-import { ContentType } from './type'
+import { ContentType } from './types'
 
 /**
  * Axios 客户端实现
