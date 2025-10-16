@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   // 入口文件
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/dexorators.ts'],
   // 输出格式：ESM 和 CommonJS
   format: ['esm', 'cjs'],
   // 生成类型声明文件（.d.ts）

@@ -1,5 +1,5 @@
 {
-  "name": "api-sdk-ts",
+  "name": "@linden/api-sdk-ts",
   "type": "module",
   "version": "1.0.0",
   "description": "API SDK 抽象",
@@ -14,11 +14,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./decorators": {
+      "types": "./dist/dexorators.d.ts",
+      "import": "./dist/dexorators.js",
+      "require": "./dist/dexorators.cjs"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "files": [
     "!src/__tests__",
     "dist",
@@ -57,6 +59,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@swc/core",
       "esbuild"
     ]
   }
