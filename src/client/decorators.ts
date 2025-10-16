@@ -7,13 +7,78 @@
 import type Client from '.'
 import type Ctx from './context'
 import ApiSdkError from './apiSdkError'
-import { ContentType } from './types'
+import { BodyType } from './types'
 import 'reflect-metadata'
 
 /**
  * 装饰器属性键类型
  */
 type DecoratorPropertyKey = string | symbol | undefined
+
+/**
+ * 请求配置选项
+ *
+ * 用于在装饰器级别配置请求参数
+ */
+export interface RequestOptions {
+  /**
+   * 请求体类型
+   *
+   * 指定如何序列化请求数据
+   */
+  bodyType?: BodyType
+
+  /**
+   * 自定义 HTTP headers
+   *
+   * 可以包括 Content-Type 在内的任意 header
+   * 优先级：@Header 参数 > 装饰器 headers > 序列化器默认值
+   *
+   * @example
+   * { 'Content-Type': 'application/vnd.api+json', 'X-Api-Version': '2.0' }
+   */
+  headers?: Record<string, string>
+}
+
+/**
+ * 规范化 HTTP Header 名称
+ *
+ * 将 header 名称转换为标准格式（首字母大写，连字符分隔）
+ * 特殊处理 Content-Type 确保大小写一致
+ *
+ * @param name 原始 header 名称
+ * @returns 规范化后的 header 名称
+ *
+ * @example
+ * normalizeHeaderName('content-type') // 'Content-Type'
+ * normalizeHeaderName('x-api-version') // 'X-Api-Version'
+ */
+function normalizeHeaderName(name: string): string {
+  // Content-Type 特殊处理（最常用，确保一致性）
+  if (name.toLowerCase() === 'content-type') {
+    return 'Content-Type'
+  }
+
+  // 其他 header 采用首字母大写格式
+  return name
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('-')
+}
+
+/**
+ * 规范化 headers 对象
+ *
+ * @param headers 原始 headers 对象
+ * @returns 规范化后的 headers 对象
+ */
+function normalizeHeaders(headers: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {}
+  for (const [key, value] of Object.entries(headers)) {
+    normalized[normalizeHeaderName(key)] = value
+  }
+  return normalized
+}
 
 /**
  * 参数装饰器，用于在方法参数上定义元数据。
@@ -79,12 +144,25 @@ export function Path(name: string | true = true): ParameterDecorator {
  * HTTP POST请求的装饰器函数。
  *
  * @param path - POST请求的端点路径。
- * @param contentType - 请求的内容类型。默认为 `ContentType.JSON`。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项。默认为 `BodyType.JSON`。
  * @returns 一个函数，用于修改目标方法以向指定路径发出POST请求。
+ *
+ * @example
+ * // 简单用法
+ * @Post('/users')
+ * createUser(@Body() user: User) {}
+ *
+ * // 指定 bodyType
+ * @Post('/users', BodyType.JSON)
+ * createUser(@Body() user: User) {}
+ *
+ * // 自定义 headers
+ * @Post('/users', { headers: { 'Content-Type': 'application/vnd.api+json' } })
+ * createUser(@Body() user: User) {}
  */
-export function Post(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+export function Post(path: string, bodyTypeOrOptions?: BodyType | RequestOptions): MethodDecorator {
   return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    return request(path, 'post', target, propertyKey, descriptor, contentType)
+    return request(path, 'post', target, propertyKey, descriptor, bodyTypeOrOptions ?? BodyType.JSON)
   }
 }
 
@@ -92,12 +170,16 @@ export function Post(path: string, contentType: ContentType = ContentType.JSON):
  * Get 装饰器，用于将方法标记为 HTTP GET 请求。
  *
  * @param path - 请求的路径。
- * @param contentType - 请求的内容类型，默认为 FORM_DATA。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项，默认为 FORM_DATA。
  * @returns 装饰器函数。
+ *
+ * @example
+ * @Get('/users')
+ * getUsers(@Query() filter: Filter) {}
  */
-export function Get(path: string, contentType: ContentType = ContentType.FORM_DATA): MethodDecorator {
+export function Get(path: string, bodyTypeOrOptions?: BodyType | RequestOptions): MethodDecorator {
   return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    return request(path, 'get', target, propertyKey, descriptor, contentType)
+    return request(path, 'get', target, propertyKey, descriptor, bodyTypeOrOptions ?? BodyType.FORM_DATA)
   }
 }
 
@@ -105,12 +187,12 @@ export function Get(path: string, contentType: ContentType = ContentType.FORM_DA
  * Put 装饰器，用于将方法标记为 HTTP PUT 请求。
  *
  * @param path - 请求的路径。
- * @param contentType - 请求的内容类型，默认为 JSON。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项，默认为 JSON。
  * @returns 装饰器函数。
  */
-export function Put(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+export function Put(path: string, bodyTypeOrOptions?: BodyType | RequestOptions): MethodDecorator {
   return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    return request(path, 'put', target, propertyKey, descriptor, contentType)
+    return request(path, 'put', target, propertyKey, descriptor, bodyTypeOrOptions ?? BodyType.JSON)
   }
 }
 
@@ -118,12 +200,12 @@ export function Put(path: string, contentType: ContentType = ContentType.JSON): 
  * Delete 装饰器，用于将方法标记为 HTTP DELETE 请求。
  *
  * @param path - 请求的路径。
- * @param contentType - 请求的内容类型，默认为 FORM_DATA。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项，默认为 FORM_DATA。
  * @returns 装饰器函数。
  */
-export function Delete(path: string, contentType: ContentType = ContentType.FORM_DATA): MethodDecorator {
+export function Delete(path: string, bodyTypeOrOptions?: BodyType | RequestOptions): MethodDecorator {
   return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    return request(path, 'delete', target, propertyKey, descriptor, contentType)
+    return request(path, 'delete', target, propertyKey, descriptor, bodyTypeOrOptions ?? BodyType.FORM_DATA)
   }
 }
 
@@ -131,12 +213,12 @@ export function Delete(path: string, contentType: ContentType = ContentType.FORM
  * Patch 装饰器，用于将方法标记为 HTTP PATCH 请求。
  *
  * @param path - 请求的路径。
- * @param contentType - 请求的内容类型，默认为 JSON。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项，默认为 JSON。
  * @returns 装饰器函数。
  */
-export function Patch(path: string, contentType: ContentType = ContentType.JSON): MethodDecorator {
+export function Patch(path: string, bodyTypeOrOptions?: BodyType | RequestOptions): MethodDecorator {
   return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    return request(path, 'patch', target, propertyKey, descriptor, contentType)
+    return request(path, 'patch', target, propertyKey, descriptor, bodyTypeOrOptions ?? BodyType.JSON)
   }
 }
 
@@ -148,7 +230,7 @@ export function Patch(path: string, contentType: ContentType = ContentType.JSON)
  * @param target - 目标对象。
  * @param propertyKey - 被装饰方法的名称。
  * @param descriptor - 方法的属性描述符。
- * @param contentType - 请求的内容类型，默认为 ContentType.FORM_DATA。
+ * @param bodyTypeOrOptions - 请求体类型或配置选项，默认为 BodyType.FORM_DATA。
  * @returns 修改后的属性描述符。
  */
 function request(
@@ -157,38 +239,73 @@ function request(
   target: object,
   propertyKey: string | symbol,
   descriptor: PropertyDescriptor,
-  contentType: ContentType = ContentType.FORM_DATA,
+  bodyTypeOrOptions: BodyType | RequestOptions = BodyType.FORM_DATA,
 ): PropertyDescriptor {
+  // 解析参数
+  let bodyType: BodyType
+  let decoratorHeaders: Record<string, string> = {}
+
+  if (typeof bodyTypeOrOptions === 'object' && bodyTypeOrOptions !== null) {
+    // 配置对象方式
+    bodyType = bodyTypeOrOptions.bodyType ?? BodyType.JSON
+    if (bodyTypeOrOptions.headers) {
+      decoratorHeaders = normalizeHeaders(bodyTypeOrOptions.headers)
+    }
+  }
+  else {
+    // 简单参数方式（BodyType 枚举）
+    bodyType = bodyTypeOrOptions
+  }
+
   descriptor.value = async function (...args: unknown[]) {
-    return doRequest(this as Client<unknown>, path, method, contentType, target, propertyKey, args)
+    return doRequest({
+      client: this as Client<unknown>,
+      path,
+      method,
+      bodyType,
+      decoratorHeaders,
+      target,
+      propertyKey,
+      args,
+    })
   }
   return descriptor
 }
 
-async function doRequest(
-  client: Client<unknown>,
-  path: string,
-  method: string,
-  contentType: ContentType,
-  target: object,
-  propertyKey: string | symbol,
-  args: unknown[],
-): Promise<unknown> {
+/**
+ * doRequest 参数配置
+ */
+interface DoRequestConfig {
+  client: Client<unknown>
+  path: string
+  method: string
+  bodyType: BodyType
+  decoratorHeaders: Record<string, string>
+  target: object
+  propertyKey: string | symbol
+  args: unknown[]
+}
+
+async function doRequest(config: DoRequestConfig): Promise<unknown> {
+  const { client, path: initialPath, method, bodyType, decoratorHeaders, target, propertyKey, args } = config
   const body: Record<string, unknown> = {}
   const query: Record<string, unknown> = {}
   const pathParams: Record<string, unknown> = {}
-  const headers: Record<string, unknown> = {}
+  // 先将装饰器级别的 headers 放入（优先级：参数 > 装饰器）
+  const headers: Record<string, unknown> = { ...decoratorHeaders }
 
-  const ctx: Ctx = { path, method, contentType, headers, body, query, pathParams, attribute: {} }
+  const ctx: Ctx = { path: initialPath, method, contentType: bodyType, headers, body, query, pathParams, attribute: {} }
 
   if (!args?.length) {
     // 如果没有参数，直接发送请求
     return run(client, ctx)
   }
 
+  // processArgs 会处理 @Header 参数，覆盖同名的装饰器 headers
   processArgs(args, target, propertyKey, ctx)
 
   // 替换路径参数
+  let path = initialPath
   for (const key in pathParams) {
     path = path.replace(`{${key}}`, String(pathParams[key]))
   }
@@ -214,29 +331,44 @@ function processArgs(args: unknown[], target: object, propertyKey: string | symb
     }
     name = Reflect.getMetadata(`queryName:${i}`, target, propertyKey)
     if (name) {
-      process(name, item, type, query)
+      process(name, item, type, query, false)
       continue
     }
     name = Reflect.getMetadata(`pathName:${i}`, target, propertyKey)
     if (name) {
-      process(name, item, type, pathParams)
+      process(name, item, type, pathParams, false)
       continue
     }
     name = Reflect.getMetadata(`headerName:${i}`, target, propertyKey)
     if (name) {
-      process(name, item, type, headers)
+      process(name, item, type, headers, true) // headers 需要规范化
     }
   }
 }
 
-function process(name: string | true, item: unknown, type: string, target: Record<string, unknown>): void {
+function process(
+  name: string | true,
+  item: unknown,
+  type: string,
+  target: Record<string, unknown>,
+  isHeader: boolean = false,
+): void {
   if (name === true) {
     if (type === 'object') {
-      Object.assign(target, item)
+      // 如果是 headers 对象，需要规范化
+      if (isHeader) {
+        const normalized = normalizeHeaders(item as Record<string, string>)
+        Object.assign(target, normalized)
+      }
+      else {
+        Object.assign(target, item)
+      }
     }
   }
   else {
-    target[name] = item
+    // 如果是单个 header，规范化名称
+    const finalName = isHeader ? normalizeHeaderName(name) : name
+    target[finalName] = item
   }
 }
 
